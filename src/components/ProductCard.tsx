@@ -157,6 +157,7 @@ export function ProductCard({
           value={quantity}
           onDecrease={onDecrease}
           onIncrease={onIncrease}
+          addOnlyWhenZero
           aria-label={`${product.name} quantity`}
         />
         <div className="product-card__prices">

@@ -52,7 +52,14 @@
   box-shadow: var(--shadow-card);
   transition:
     border-color var(--duration-fast) var(--ease-out),
-    box-shadow var(--duration-fast) var(--ease-out);
+    box-shadow var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+
+.plan-card:hover:not(.plan-card--selected) {
+  border-color: color-mix(in srgb, var(--color-brand) 40%, var(--color-border));
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--color-brand) 12%, transparent);
+  transform: translateY(-3px);
 }
 
 .plan-card--selected {
@@ -170,11 +177,24 @@
   cursor: pointer;
   transition:
     background var(--duration-fast) var(--ease-out),
-    color var(--duration-fast) var(--ease-out);
+    color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
 }
 
 .plan-card__cta:hover {
-  background: var(--color-brand-soft);
+  background: var(--color-brand);
+  color: var(--color-text-inverse);
+  border-color: var(--color-brand);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--color-brand) 30%, transparent);
+  transform: translateY(-1px);
+}
+
+.plan-card__cta:active {
+  background: var(--color-brand-hover);
+  transform: translateY(0);
+  box-shadow: none;
 }
 
 .plan-card__cta--selected {
@@ -184,4 +204,7 @@
 
 .plan-card__cta--selected:hover {
   background: var(--color-brand-hover);
+  border-color: var(--color-brand-hover);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--color-brand) 30%, transparent);
+  transform: translateY(-1px);
 }
