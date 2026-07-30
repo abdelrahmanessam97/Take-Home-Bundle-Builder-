@@ -9,7 +9,7 @@ Responsive React/Vite prototype of a multi-step home security bundle builder bas
 | JSON product/catalog data | `src/data/catalog.json` |
 | Clean clone + run instructions | See [Run locally](#run-locally) below |
 | README covering decisions / unfinished work | This file |
-| Bonus: backend API for catalog | `GET /api/catalog` (Vite middleware + optional standalone server) |
+| Bonus: backend API for catalog | `GET /api/catalog` (Vite locally; Vercel rewrite → static `catalog.json`; optional `npm run server`) |
 
 ## Run locally
 
@@ -139,6 +139,7 @@ Plans use an `exclusiveGroup` in the catalog so only one subscription can be act
 - Source of truth remains `src/data/catalog.json`.
 - During `npm run dev` / `npm run preview`, Vite serves that file at `GET /api/catalog`.
 - `npm run server` exposes the same endpoint on a standalone Node process (useful for demoing a separate backend).
+- On **Vercel**, `vercel.json` rewrites `GET /api/catalog` → `/catalog.json` (copied into `public/` at build time), so the same client URL works in production with no Node server.
 - The client calls `/api/catalog` on boot and falls back to the bundled JSON if the request fails.
 
 ## Why the code is structured this way

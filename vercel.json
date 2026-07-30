@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/catalog",
+      "destination": "/catalog.json"
+    }
+  ]
+}
