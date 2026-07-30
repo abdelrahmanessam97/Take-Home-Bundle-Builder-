@@ -148,8 +148,9 @@ Includes items such as Cam v4, Cam Pan, sensors, hub, MicroSD, Cam Unlimited, an
 
 1. **Required (assignment):** `localStorage` key `bundle-builder:saved-system`  
    Stores: quantities, active variants, open accordion step.  
-2. On reload / return: **localStorage wins** over API/seed defaults.  
-3. **Bonus:** after a successful local save, the app also syncs to `PUT /api/bundle` (ignored if the server fails).
+2. The live bundle is **auto-written to localStorage** whenever quantities / variants / open step change, so a normal **page refresh** restores what you were building.  
+3. On reload / return: **localStorage wins** over API/seed defaults.  
+4. **Save my system for later** still shows a confirmation toast and best-effort syncs to `PUT /api/bundle` (bonus).
 
 ---
 

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { postCheckout, saveBundle } from '../lib/api'
 import {
   buildReviewLines,
@@ -26,6 +26,24 @@ export function useBundleState(initial: PersistedState): BundleState {
   const [checkoutNotice, setCheckoutNotice] = useState<ActionNotice | null>(null)
   const [saving, setSaving] = useState(false)
   const [checkingOut, setCheckingOut] = useState(false)
+
+  // Keep localStorage in sync so a refresh restores the latest bundle
+  // (even if the shopper hasn't clicked "Save my system for later" yet).
+  useEffect(() => {
+    writeLocalBundle({ quantities, activeVariants, openStepId })
+  }, [quantities, activeVariants, openStepId])
+
+  useEffect(() => {
+    const flush = () => {
+      writeLocalBundle({ quantities, activeVariants, openStepId })
+    }
+    window.addEventListener('pagehide', flush)
+    window.addEventListener('beforeunload', flush)
+    return () => {
+      window.removeEventListener('pagehide', flush)
+      window.removeEventListener('beforeunload', flush)
+    }
+  }, [quantities, activeVariants, openStepId])
 
   const clearNoticeLater = useCallback((setter: (value: ActionNotice | null) => void) => {
     window.setTimeout(() => setter(null), 4000)
@@ -232,12 +250,22 @@ export function normalizeBundleState(
 
 /**
  * Resolve boot state: localStorage (required) → API/seeded catalog defaults.
+ * localStorage always wins when present so refresh restores the last session.
  */
 export function resolveInitialBundle(
   catalog: CatalogData,
   apiBundle: PersistedState | null | undefined,
 ): PersistedState {
   const local = readLocalBundle(catalog)
-  if (local) return local
+  if (local) {
+    return {
+      quantities: { ...local.quantities },
+      activeVariants: {
+        ...catalog.initialActiveVariants,
+        ...local.activeVariants,
+      },
+      openStepId: local.openStepId,
+    }
+  }
   return normalizeBundleState(catalog, apiBundle)
 }

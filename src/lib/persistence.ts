@@ -7,10 +7,13 @@ export function readLocalBundle(catalog: CatalogData): PersistedState | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return null
-    const parsed = JSON.parse(raw) as PersistedState
+    const parsed = JSON.parse(raw) as Partial<PersistedState> & { savedAt?: string }
     if (!parsed || typeof parsed !== 'object') return null
-    if (!parsed.quantities || typeof parsed.quantities !== 'object') return null
-    if (!parsed.activeVariants || typeof parsed.activeVariants !== 'object') return null
+    // Accept saved payloads even when quantities were cleared to {}.
+    if (parsed.quantities == null || typeof parsed.quantities !== 'object') return null
+    if (parsed.activeVariants == null || typeof parsed.activeVariants !== 'object') {
+      return null
+    }
 
     const validIds = new Set(catalog.steps.map((s) => s.id))
     const openStepId =
