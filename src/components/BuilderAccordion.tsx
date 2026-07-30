@@ -1,5 +1,5 @@
 import type { BundleState } from '../hooks/useBundleState'
-import { productsForStep } from '../lib/catalog'
+import { getProduct, productsForStep } from '../lib/catalog'
 import type { StepId } from '../types/catalog'
 import { PlanCard } from './PlanCard'
 import { ProductCard } from './ProductCard'
@@ -21,6 +21,7 @@ export function BuilderAccordion({ bundle }: BuilderAccordionProps) {
     const beforeTop = button?.getBoundingClientRect().top ?? 0
     toggleStep(stepId)
 
+    // Keep the clicked header visually stable when neighboring panels collapse.
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => {
         const afterTop = button?.getBoundingClientRect().top ?? 0
@@ -39,6 +40,7 @@ export function BuilderAccordion({ bundle }: BuilderAccordionProps) {
         const selectedCount = stepSelectedCount(step.id)
         const products = productsForStep(step.id)
         const isPlanStep = step.id === 'plan'
+        const headerId = `builder-step-header-${step.id}`
         const panelId = `builder-step-panel-${step.id}`
 
         return (
@@ -50,34 +52,36 @@ export function BuilderAccordion({ bundle }: BuilderAccordionProps) {
               {meta.stepLabel} {index + 1} {meta.ofLabel} {catalog.steps.length}
             </p>
 
-            <button
-              type="button"
-              className="builder-step__header"
-              onClick={(event) =>
-                handleToggle(step.id, event.currentTarget)
-              }
-              aria-expanded={isOpen}
-              aria-controls={panelId}
-            >
-              <span className="builder-step__title-wrap">
-                <StepIcon name={step.icon} className="builder-step__icon" />
-                <span className="builder-step__title">{step.title}</span>
-              </span>
+            <h2 className="builder-step__heading">
+              <button
+                type="button"
+                id={headerId}
+                className="builder-step__header"
+                onClick={(event) => handleToggle(step.id, event.currentTarget)}
+                aria-expanded={isOpen}
+                aria-controls={panelId}
+              >
+                <span className="builder-step__title-wrap">
+                  <StepIcon name={step.icon} className="builder-step__icon" />
+                  <span className="builder-step__title">{step.title}</span>
+                </span>
 
-              <span className="builder-step__meta">
-                {selectedCount > 0 ? (
-                  <span className="builder-step__count builder-step__count--visible">
-                    {selectedCount} {meta.selectedCountSuffix}
-                  </span>
-                ) : null}
-                <Chevron up={isOpen} />
-              </span>
-            </button>
+                <span className="builder-step__meta">
+                  {selectedCount > 0 ? (
+                    <span className="builder-step__count builder-step__count--visible">
+                      {selectedCount} {meta.selectedCountSuffix}
+                    </span>
+                  ) : null}
+                  <Chevron up={isOpen} />
+                </span>
+              </button>
+            </h2>
 
             <div
               id={panelId}
               className="builder-step__panel"
               role="region"
+              aria-labelledby={headerId}
               aria-hidden={!isOpen}
               inert={!isOpen ? true : undefined}
             >
@@ -92,7 +96,11 @@ export function BuilderAccordion({ bundle }: BuilderAccordionProps) {
                         aria-label={meta.plansAriaLabel}
                       >
                         {products.map((product) => (
-                          <div key={product.id} className="builder-grid__cell" role="listitem">
+                          <div
+                            key={product.id}
+                            className="builder-grid__cell"
+                            role="listitem"
+                          >
                             <PlanCard
                               product={product}
                               selected={
@@ -111,8 +119,15 @@ export function BuilderAccordion({ bundle }: BuilderAccordionProps) {
                       aria-label={`${step.title} products`}
                     >
                       {products.map((product) => (
-                        <div key={product.id} className="builder-grid__cell" role="listitem">
-                          <StepProductCard productId={product.id} bundle={bundle} />
+                        <div
+                          key={product.id}
+                          className="builder-grid__cell"
+                          role="listitem"
+                        >
+                          <StepProductCard
+                            productId={product.id}
+                            bundle={bundle}
+                          />
                         </div>
                       ))}
                     </div>
@@ -147,7 +162,9 @@ function StepProductCard({
   productId: string
   bundle: BundleState
 }) {
-  const product = bundle.catalog.products.find((p) => p.id === productId)!
+  const product = getProduct(productId) ?? bundle.catalog.products.find((p) => p.id === productId)
+  if (!product) return null
+
   const hasVariants = Boolean(product.variants?.length)
   const activeVariantId = hasVariants
     ? (bundle.activeVariants[product.id] ?? product.variants![0].id)

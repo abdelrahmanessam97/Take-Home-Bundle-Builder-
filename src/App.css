@@ -43,6 +43,11 @@ a:focus-visible {
   color: var(--color-text-muted);
 }
 
+.builder-step__heading {
+  margin: 0;
+  font: inherit;
+}
+
 .builder-step__header {
   width: 100%;
   display: flex;
@@ -1082,6 +1087,15 @@ a:focus-visible {
   text-align: center;
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-md);
+}
+
+.review__notices:empty {
+  display: none;
+}
+
+.review__notices:not(:empty) {
+  display: grid;
+  gap: var(--space-2);
 }
 
 .review__toast--save {

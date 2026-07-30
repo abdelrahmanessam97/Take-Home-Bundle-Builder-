@@ -2,19 +2,43 @@
 
 Responsive React/Vite prototype of a multi-step home security bundle builder based on the provided design. The experience centers on a 4-step builder, a live review panel, variant-aware product quantities, and save-for-later persistence.
 
+## Deliverables checklist
+
+| Requirement | Status |
+| --- | --- |
+| JSON product/catalog data | `src/data/catalog.json` |
+| Clean clone + run instructions | See [Run locally](#run-locally) below |
+| README covering decisions / unfinished work | This file |
+| Bonus: backend API for catalog | `GET /api/catalog` (Vite middleware + optional standalone server) |
+
 ## Run locally
+
+From a clean clone:
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open the local Vite URL shown in the terminal after `npm run dev`.
+Open the local Vite URL shown in the terminal (typically `http://localhost:5173`).
 
-## Other scripts
+That single command starts the UI **and** the catalog API at `GET /api/catalog` via a Vite middleware plugin. The app loads catalog data from that endpoint on startup, and falls back to the bundled JSON if the request fails.
 
-- Build: `npm run build`
-- Preview production build: `npm run preview`
+### Other scripts
+
+| Script | Purpose |
+| --- | --- |
+| `npm run build` | Typecheck + production build |
+| `npm run preview` | Preview the production build (also serves `/api/catalog`) |
+| `npm run server` | Optional standalone Node API on port `3001` (`PORT` env overrides) |
+| `npm run lint` | Lint with oxlint |
+
+Standalone API (bonus / separate process):
+
+```bash
+npm run server
+# → http://localhost:3001/api/catalog
+```
 
 ## What this project does
 
@@ -24,6 +48,7 @@ Open the local Vite URL shown in the terminal after `npm run dev`.
 - Supports per-variant quantities for products with color options.
 - Recalculates totals and savings live.
 - Saves the current configuration to `localStorage` through "Save my system for later".
+- Loads catalog content from `/api/catalog` (same JSON source of truth).
 
 ## UI overview
 
@@ -58,6 +83,7 @@ This prototype explicitly handles a number of UI and state edge cases:
   - quantities,
   - active color per product,
   - currently open accordion step.
+- Catalog load from API with silent fallback to bundled JSON.
 - Responsive builder grid across breakpoints:
   - under `500px`: 1 column,
   - `500px+`: 2 columns,
@@ -76,100 +102,69 @@ This prototype explicitly handles a number of UI and state edge cases:
 
 ## Project structure
 
-- `src/App.tsx`
-  - App shell and top-level layout. Creates one shared bundle state and passes it into the builder and review panel.
-- `src/hooks/useBundleState.ts`
-  - Main state and actions for quantities, active variants, open accordion step, save/restore, and checkout/save notices.
-- `src/lib/catalog.ts`
-  - Pure helpers for reading catalog data, formatting prices, counting selected products, building review rows, grouping rows, and computing totals.
-- `src/types/catalog.ts`
-  - Domain types for products, variants, steps, categories, and quantity keys.
-- `src/data/catalog.json`
-  - Source of truth for copy, product data, pricing, variants, seeded initial state, and UI metadata.
-- `src/components/BuilderAccordion.tsx`
-  - Renders the 4-step builder and decides whether a step shows product cards or plan cards.
-- `src/components/ProductCard.tsx`
-  - Camera/accessory product card with variant selection, description handling, pricing, and quantity controls.
-- `src/components/PlanCard.tsx`
-  - Plan selection card for mutually exclusive subscription choices.
-- `src/components/ReviewPanel.tsx`
-  - Live summary of selected items, grouped by category, with totals, shipping, guarantee copy, checkout, and save-for-later.
-- `src/styles/tokens.css`
-  - Shared design tokens for color, typography, spacing, radius, shadows, and breakpoints.
+- `src/App.tsx` — App shell, catalog bootstrap, top-level layout.
+- `src/hooks/useBundleState.ts` — Quantities, variants, accordion step, save/restore, notices.
+- `src/lib/catalog.ts` — Catalog load helpers, pricing, review rows, totals.
+- `src/types/catalog.ts` — Domain types.
+- `src/data/catalog.json` — Source of truth for copy, products, pricing, variants, seeded state.
+- `src/components/` — Builder accordion, product/plan cards, review panel, quantity stepper.
+- `src/styles/` — Design tokens and review/plan styles.
+- `server/index.mjs` — Optional standalone Node HTTP server for `GET /api/catalog`.
+- `vite.config.ts` — React plugin + `/api/catalog` middleware for `dev` / `preview`.
 
 ## Business logic
 
 ### Shared state
 
-The builder and review panel both read from the same state object created in `useBundleState()`. That makes all quantity changes immediately reflect across both sides of the UI without duplicating state in multiple components.
+The builder and review panel both read from the same state object created in `useBundleState()`. Quantity changes reflect immediately on both sides without duplicated state.
 
 ### Variant quantity model
 
-Products with variants are stored using line keys shaped like:
-
-```txt
-productId::variantId
-```
-
-Examples:
-
-```txt
-cam-v4::white
-cam-v4::black
-```
-
-This structure was chosen so each color can keep its own quantity. The selected color chip only controls which variant the card stepper is editing; switching colors does not erase quantities already added for other variants.
+Products with variants use line keys shaped like `productId::variantId` (e.g. `cam-v4::white`). Each color keeps its own quantity; the selected chip only controls which variant the card stepper edits.
 
 ### Review panel derivation
 
-The review panel is not stored separately. It is derived from the current quantity map:
-
-1. build review lines,
-2. group them by category,
-3. compute compare-at total, active total, and savings.
-
-This keeps pricing and summary data consistent with the selected items at all times.
+The review panel is derived from the quantity map: build lines → group by category → compute compare-at, total, and savings.
 
 ### Plan selection
 
-Plans use an `exclusiveGroup` flag in the catalog so only one subscription can be active at once. Selecting one plan clears the others in that same group.
+Plans use an `exclusiveGroup` in the catalog so only one subscription can be active at once.
 
 ### Persistence
 
-Clicking "Save my system for later" stores:
+"Save my system for later" stores quantities, active variants, and the open accordion step in `localStorage`.
 
-- selected quantities,
-- active variant per product,
-- currently open accordion step.
+### Catalog API (bonus)
 
-On the next visit, the app restores that saved state from `localStorage`.
+- Source of truth remains `src/data/catalog.json`.
+- During `npm run dev` / `npm run preview`, Vite serves that file at `GET /api/catalog`.
+- `npm run server` exposes the same endpoint on a standalone Node process (useful for demoing a separate backend).
+- The client calls `/api/catalog` on boot and falls back to the bundled JSON if the request fails.
 
 ## Why the code is structured this way
 
-- The catalog is JSON-driven so product content, pricing, badges, variants, and seeded UI state can be changed without rewriting component markup.
-- State is centralized in one hook because the builder and review panel are two views over the same bundle, not separate flows.
-- Pricing and review rows are derived with pure helper functions so business logic stays predictable and easy to test or extend.
-- Components stay mostly presentational: they receive data and actions rather than owning bundle rules themselves.
-
-## Accessibility, performance, and best-practice polish
-
-This project includes a lightweight polish pass aimed at frontend take-home quality:
-
-- clearer keyboard focus styles,
-- safer semantics for variant selection controls,
-- larger touch targets for quantity steppers,
-- lazy/async image decoding where appropriate,
-- improved document metadata for a more complete browser/SEO surface.
+- JSON-driven catalog so content, pricing, badges, and seeded UI state change without rewriting markup.
+- One shared hook because builder and review are two views of the same bundle.
+- Pure helpers for pricing/review so logic stays predictable and easy to extend.
+- Components stay mostly presentational: they receive data and actions rather than owning bundle rules.
 
 ## Decisions and tradeoffs
 
-- The app uses a local JSON file instead of a backend because the assignment prioritizes UI behavior and interaction quality over API work.
-- Checkout is a placeholder confirmation because payment flow is outside the take-home scope.
-- Product imagery is served locally to keep the prototype self-contained and easy to run from a clean clone.
-- The implementation favors clarity and correctness over premature optimization because the catalog is small and the submission is a prototype.
+- Catalog lives in one JSON file; the bonus API serves that same file rather than introducing a database.
+- Checkout is a placeholder confirmation — payment is outside take-home scope.
+- Product imagery is served locally so a clean clone runs without external asset hosts.
+- Clarity and correctness over premature optimization — the catalog is small and this is a prototype.
+- Accordion animation uses CSS grid (`0fr` → `1fr`) instead of JS height measurement for simpler open/close motion.
+
+## Unfinished / out of scope
+
+- Real checkout / cart / payment integration.
+- Authenticated accounts or server-side persistence of saved systems.
+- Production CDN / image pipeline (local assets only).
+- Full pixel-perfect parity audit against every Figma breakpoint (layout targets the reference; residual visual diffs may remain).
+- Automated unit/e2e test suite.
 
 ## Notes / limitations
 
-- The prototype is optimized for the provided design and responsive behavior, but final visual fidelity should still be checked side-by-side against the original Figma.
+- Seeded starting configuration is defined in `src/data/catalog.json` and can be adjusted if the reference changes.
 - Some product assets are local placeholders/exports rather than a production asset pipeline.
-- The seeded starting configuration is defined in `src/data/catalog.json` and can be adjusted if the reference screenshot changes.

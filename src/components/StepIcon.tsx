@@ -13,13 +13,16 @@ interface StepIconProps {
 }
 
 export function StepIcon({ name, className }: StepIconProps) {
+  const src = STEP_ICON_SRC[name]
+  if (!src) return null
+
   return (
     <span
       className={className}
       data-icon={name}
       style={{
-        WebkitMaskImage: `url(${STEP_ICON_SRC[name]})`,
-        maskImage: `url(${STEP_ICON_SRC[name]})`,
+        WebkitMaskImage: `url(${src})`,
+        maskImage: `url(${src})`,
       }}
       aria-hidden
     />
@@ -35,6 +38,7 @@ export function Chevron({ up }: { up?: boolean }) {
       viewBox="0 0 12 8"
       fill="currentColor"
       aria-hidden
+      focusable="false"
       className={up ? 'chevron chevron--up' : 'chevron'}
     >
       <path d="M6 7.25 0.75 1.5h10.5L6 7.25Z" />

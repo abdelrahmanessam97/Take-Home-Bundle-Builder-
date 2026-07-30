@@ -86,6 +86,31 @@ ol {
   overflow-x: clip;
 }
 
+.app-shell--loading {
+  min-height: 100dvh;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  place-items: center;
+}
+
+.app-spinner {
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 3px solid color-mix(in srgb, var(--color-brand, #1b9e4b) 22%, transparent);
+  border-top-color: var(--color-brand, #1b9e4b);
+  border-radius: 50%;
+  animation: app-spinner-rotate 0.7s linear infinite;
+}
+
+@keyframes app-spinner-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .app-layout {
   display: flex;
   flex-direction: column;

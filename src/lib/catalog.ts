@@ -1,8 +1,41 @@
-import catalog from "../data/catalog.json";
+import fallbackCatalog from "../data/catalog.json";
 import type { CatalogData, CatalogProduct, QuantityMap, ReviewCategory, StepId } from "../types/catalog";
 import { lineKey, parseLineKey } from "../types/catalog";
 
-export const catalogData = catalog as unknown as CatalogData;
+/** Bundled fallback so the app still runs if the API is unavailable. */
+export let catalogData = fallbackCatalog as unknown as CatalogData;
+
+export function setCatalogData(next: CatalogData) {
+  catalogData = next;
+}
+
+/** Shared across Strict Mode remounts so we only hit the network once per page load. */
+let catalogPromise: Promise<CatalogData> | null = null;
+
+/** Prefer `/api/catalog` (Vite middleware or standalone server); fall back to bundled JSON. */
+export function loadCatalog(): Promise<CatalogData> {
+  if (!catalogPromise) {
+    catalogPromise = fetchCatalog();
+  }
+  return catalogPromise;
+}
+
+async function fetchCatalog(): Promise<CatalogData> {
+  try {
+    const response = await fetch("/api/catalog");
+    if (!response.ok) throw new Error(`Catalog API returned ${response.status}`);
+    const data = (await response.json()) as CatalogData;
+    if (!data?.products?.length || !data?.steps?.length) {
+      throw new Error("Catalog API returned incomplete data");
+    }
+    setCatalogData(data);
+    return data;
+  } catch {
+    // Allow a later retry after a failed load (e.g. API came up after first attempt).
+    catalogPromise = null;
+    return catalogData;
+  }
+}
 
 export function formatMoney(amount: number): string {
   return new Intl.NumberFormat("en-US", {
