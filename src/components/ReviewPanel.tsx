@@ -30,12 +30,8 @@ export function ReviewPanel({ bundle }: ReviewPanelProps) {
   return (
     <aside className={`review${hasProducts ? "" : " review--empty"}`}>
       <div className="review__layout review__layout--half">
-        <section
-          className="review__section review__section--items review__col"
-          aria-label={meta.reviewItemsAriaLabel}
-        >
+        <section className="review__section review__section--items review__col" aria-label={meta.reviewItemsAriaLabel}>
           <header className="review__header">
-            <p className="review__eyebrow">{meta.reviewEyebrow}</p>
             <h2 className="review__title">{meta.reviewTitle}</h2>
             <p className="review__subtitle">{meta.reviewSubtitle}</p>
           </header>
@@ -99,44 +95,36 @@ export function ReviewPanel({ bundle }: ReviewPanelProps) {
           </div>
         </section>
 
-        <section
-          className="review__section review__section--summary review__col"
-          aria-label={meta.reviewSummaryAriaLabel}
-        >
-          <div className="review__guarantee">
-            <img
-              className="guarantee-seal"
-              src="/images/products/guarantee-badge.png"
-              alt={meta.guaranteeTitle}
-              width={104}
-              height={104}
-              decoding="async"
-            />
-            <div className="review__guarantee-copy">
-              <p className="review__guarantee-title">{meta.returnsTitle}</p>
-              <p className="review__guarantee-body">{meta.guaranteeBody}</p>
-            </div>
-          </div>
-
-          <div className="review__pricing-block">
-            <div className="review__pricing-row">
-              {hasProducts ? (
-                <span className="financing-pill">{meta.financingLabel}</span>
-              ) : (
-                <span className="financing-pill financing-pill--muted">{meta.financingEmptyLabel}</span>
-              )}
-              <div className="review__totals">
-                {hasProducts && displayCompareAt > displayTotal ? <span className="price price--compare price--lg">{formatMoney(displayCompareAt)}</span> : null}
-                <span className="price price--total">{formatMoney(displayTotal)}</span>
+        <section className="review__section review__section--summary review__col" aria-label={meta.reviewSummaryAriaLabel}>
+          <div className="review__summary-top">
+            <div className="review__guarantee">
+              <img className="guarantee-seal" src="/images/products/guarantee-badge.png" alt={meta.guaranteeTitle} width={104} height={104} decoding="async" />
+              <div className="review__guarantee-copy">
+                <p className="review__guarantee-title">{meta.returnsTitle}</p>
+                <p className="review__guarantee-body">{meta.guaranteeBody}</p>
               </div>
             </div>
 
-            {hasProducts && displaySavings > 0 ? (
-              <p className="savings-callout">
-                {meta.savingsPrefix} {formatMoney(displaySavings)} {meta.savingsSuffix}
-              </p>
-            ) : null}
+            <div className="review__pricing-block">
+              <div className="review__pricing-row">
+                {hasProducts ? (
+                  <span className="financing-pill">{meta.financingLabel}</span>
+                ) : (
+                  <span className="financing-pill financing-pill--muted">{meta.financingEmptyLabel}</span>
+                )}
+                <div className="review__totals">
+                  {hasProducts && displayCompareAt > displayTotal ? <span className="price price--compare price--lg">{formatMoney(displayCompareAt)}</span> : null}
+                  <span className="price price--total">{formatMoney(displayTotal)}</span>
+                </div>
+              </div>
+            </div>
           </div>
+
+          {hasProducts && displaySavings > 0 ? (
+            <p className="savings-callout">
+              {meta.savingsPrefix} {formatMoney(displaySavings)} {meta.savingsSuffix}
+            </p>
+          ) : null}
 
           <div className="review__actions">
             <button type="button" className="btn btn--primary" onClick={checkout} disabled={!hasProducts}>
@@ -169,13 +157,7 @@ function ReviewLineRow({ line, onDecrease, onIncrease }: { line: ReviewLine; onD
   return (
     <li className={`review-line${showStepper ? "" : " review-line--no-stepper"}${isShipping ? " review-line--shipping" : ""}`}>
       <div className={`review-line__thumb${line.product.icon === "shield" || line.product.icon === "truck" ? " review-line__thumb--plain" : ""}`}>
-        <img
-          src={line.image}
-          alt=""
-          className="review-line__thumb-img"
-          loading="lazy"
-          decoding="async"
-        />
+        <img src={line.image} alt="" className="review-line__thumb-img" loading="lazy" decoding="async" />
       </div>
 
       <div className="review-line__info">

@@ -39,6 +39,7 @@
 
 @media (min-width: 1280px) {
   .review-line__name {
+    line-clamp: 2;
     white-space: normal;
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -65,15 +66,15 @@
 /* Separate white +/- squares (Figma review lines) */
 .review-line .qty-stepper--sm {
   gap: 10px;
-  min-height: 44px;
+  min-height: 24px;
   padding: 0;
   border-radius: 0;
   background: transparent;
 }
 
 .review-line .qty-stepper--sm .qty-stepper__btn {
-  width: 44px;
-  height: 44px;
+  width: 24px;
+  height: 24px;
   border: var(--border-width) solid var(--color-stepper-border);
   background: var(--color-bg-surface);
   color: var(--color-text-secondary);
@@ -104,6 +105,12 @@
   gap: var(--space-4);
 }
 
+.review__summary-top {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
 .guarantee-seal {
   width: 104px;
   height: 104px;
@@ -130,14 +137,15 @@
 }
 
 .review__totals .price--compare {
-  font-size: var(--text-md);
+  font-size: var(--text-lg);
   font-weight: var(--font-weight-regular);
   color: var(--color-text-muted);
   text-decoration: line-through;
+  line-height: 1;
 }
 
 .price--total {
-  font-size: var(--text-3xl);
+  font-size: var(--text-2xl);
   color: var(--color-brand);
   font-weight: var(--font-weight-bold);
   line-height: 1;
@@ -145,6 +153,8 @@
 }
 
 .savings-callout {
+  width: 100%;
+  margin: 0;
   text-align: center;
   color: var(--color-success);
 }
@@ -223,8 +233,8 @@
   }
 
   .review-line .qty-stepper--sm .qty-stepper__btn {
-    width: 40px;
-    height: 40px;
+    width: 24px;
+    height: 24px;
   }
 
   .review-line__prices {
@@ -250,6 +260,48 @@
 }
 
 @media (min-width: 1280px) {
+  .review__summary-top {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: end;
+    gap: var(--space-5);
+  }
+
+  .review__guarantee {
+    align-items: center;
+    gap: 0;
+  }
+
+  .review__guarantee-copy {
+    display: none;
+  }
+
+  .review__pricing-block {
+    align-items: flex-end;
+    gap: var(--space-4);
+  }
+
+  .review__pricing-row {
+    width: 100%;
+    justify-content: flex-end;
+    align-items: flex-start;
+    gap: var(--space-4);
+  }
+
+  .review__pricing-row .financing-pill {
+    align-self: flex-start;
+  }
+
+  .review__totals {
+    justify-content: flex-end;
+    align-items: baseline;
+  }
+
+  .savings-callout {
+    width: 100%;
+    text-align: center;
+  }
+
   .review__section--summary {
     gap: var(--space-6);
   }
