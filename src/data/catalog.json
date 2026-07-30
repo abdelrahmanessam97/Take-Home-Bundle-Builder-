@@ -26,12 +26,17 @@
     "stepLabel": "Step",
     "ofLabel": "of",
     "selectedCountSuffix": "selected",
-    "readMoreLabel": "Read more",
+    "readMoreLabel": "Show more",
+    "showMoreLabel": "Show more",
     "showLessLabel": "Show less",
     "learnMoreLabel": "Learn More",
     "freeLabel": "FREE",
     "selectPlanLabel": "Select plan",
     "selectedPlanLabel": "Selected",
+    "validationEmptyBundle": "Add at least one camera, sensor, or accessory before checkout.",
+    "validationRequiredProduct": "{product} is required for the items in your system.",
+    "savingLabel": "Saving…",
+    "checkingOutLabel": "Checking out…",
     "reviewCategoryLabels": {
       "cameras": "Cameras",
       "sensors": "Sensors",
@@ -229,7 +234,8 @@
       "image": "/images/products/hub.png",
       "price": 0,
       "compareAt": 29.92,
-      "isFree": true
+      "isFree": true,
+      "requiredWhenStepSelected": "sensors"
     },
     {
       "id": "microsd",

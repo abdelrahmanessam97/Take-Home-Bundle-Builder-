@@ -17,6 +17,7 @@ a:focus-visible {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+  overflow-anchor: none;
 }
 
 .builder-step {
@@ -24,6 +25,7 @@ a:focus-visible {
   border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius-lg);
   overflow: hidden;
+  overflow-anchor: none;
   transition:
     background-color var(--duration-slow) var(--ease-out),
     border-color var(--duration-slow) var(--ease-out);
@@ -832,10 +834,19 @@ a:focus-visible {
   background: var(--color-brand);
   color: var(--color-text-inverse);
   border-radius: var(--radius-md);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
 }
 
 .btn--primary:hover {
   background: var(--color-brand-hover);
+}
+
+.btn--primary .app-spinner {
+  border-color: color-mix(in srgb, #fff 35%, transparent);
+  border-top-color: #fff;
 }
 
 /* ——— Review panel ——— */
@@ -1143,6 +1154,23 @@ a:focus-visible {
   align-items: stretch;
 }
 
+.review__validation {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-3);
+  list-style: none;
+  display: grid;
+  gap: var(--space-1);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, #c62828 10%, transparent);
+  color: #8b1e1e;
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+}
+
+.review__validation li {
+  margin: 0;
+}
+
 .review__save {
   border: 0;
   background: transparent;
@@ -1154,6 +1182,13 @@ a:focus-visible {
   text-underline-offset: 3px;
   align-self: center;
   padding: var(--space-1);
+}
+
+.review__save-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  text-decoration: none;
 }
 
 .review__save:hover {
@@ -1175,6 +1210,16 @@ a:focus-visible {
 .review__notices:not(:empty) {
   display: grid;
   gap: var(--space-2);
+}
+
+.review__toast--success {
+  background: var(--color-brand-soft);
+  color: var(--color-brand);
+}
+
+.review__toast--error {
+  background: color-mix(in srgb, #c62828 12%, transparent);
+  color: #8b1e1e;
 }
 
 .review__toast--save {

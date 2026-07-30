@@ -1,40 +1,62 @@
-import fallbackCatalog from "../data/catalog.json";
 import type { CatalogData, CatalogProduct, QuantityMap, ReviewCategory, StepId } from "../types/catalog";
-import { lineKey, parseLineKey } from "../types/catalog";
+import type { BundleTotals, ReviewGroup, ReviewLine } from "../types/review";
+import type { BootstrapResponse, PersistedState } from "../types/bundle";
+import { lineKey, parseLineKey } from "./lineKey";
+import { fetchBootstrap, resetBootstrapCache } from "./api";
 
-/** Bundled fallback so the app still runs if the API is unavailable. */
-export let catalogData = fallbackCatalog as unknown as CatalogData;
+/** Populated only after a successful bootstrap / catalog load. */
+export let catalogData: CatalogData | null = null;
 
 export function setCatalogData(next: CatalogData) {
   catalogData = next;
 }
 
-/** Shared across Strict Mode remounts so we only hit the network once per page load. */
-let catalogPromise: Promise<CatalogData> | null = null;
-
-/** Prefer `/api/catalog` (Vite middleware or standalone server); fall back to bundled JSON. */
-export function loadCatalog(): Promise<CatalogData> {
-  if (!catalogPromise) {
-    catalogPromise = fetchCatalog();
+export function requireCatalog(): CatalogData {
+  if (!catalogData) {
+    throw new Error("Catalog has not been loaded from the server yet");
   }
-  return catalogPromise;
+  return catalogData;
 }
 
-async function fetchCatalog(): Promise<CatalogData> {
-  try {
-    const response = await fetch("/api/catalog");
-    if (!response.ok) throw new Error(`Catalog API returned ${response.status}`);
-    const data = (await response.json()) as CatalogData;
-    if (!data?.products?.length || !data?.steps?.length) {
-      throw new Error("Catalog API returned incomplete data");
-    }
-    setCatalogData(data);
-    return data;
-  } catch {
-    // Allow a later retry after a failed load (e.g. API came up after first attempt).
-    catalogPromise = null;
-    return catalogData;
+/** Shared across Strict Mode remounts so we only hit the network once per page load. */
+let bootstrapLoadPromise: Promise<{ catalog: CatalogData; bundle: PersistedState }> | null = null;
+
+/**
+ * One request: GET /api/bootstrap → catalog + bundle.
+ * Deduped for React Strict Mode double-mount.
+ */
+export function loadAppData(): Promise<{ catalog: CatalogData; bundle: PersistedState }> {
+  if (!bootstrapLoadPromise) {
+    bootstrapLoadPromise = fetchBootstrap()
+      .then((data: BootstrapResponse) => {
+        if (!data?.catalog?.products?.length || !data?.catalog?.steps?.length) {
+          throw new Error("Bootstrap API returned incomplete catalog data");
+        }
+        if (!data.bundle?.quantities || !data.bundle?.activeVariants) {
+          throw new Error("Bootstrap API returned incomplete bundle data");
+        }
+        setCatalogData(data.catalog);
+        const bundle: PersistedState = {
+          quantities: { ...data.bundle.quantities },
+          activeVariants: { ...data.bundle.activeVariants },
+          openStepId: data.bundle.openStepId ?? "cameras",
+        };
+        return { catalog: data.catalog, bundle };
+      })
+      .catch((error: unknown) => {
+        bootstrapLoadPromise = null;
+        resetBootstrapCache();
+        throw error;
+      });
   }
+  return bootstrapLoadPromise;
+}
+
+/** Allow Retry to fetch again after a failed boot. */
+export function resetAppDataLoad() {
+  bootstrapLoadPromise = null;
+  resetBootstrapCache();
+  catalogData = null;
 }
 
 export function formatMoney(amount: number): string {
@@ -45,11 +67,11 @@ export function formatMoney(amount: number): string {
 }
 
 export function getProduct(productId: string): CatalogProduct | undefined {
-  return catalogData.products.find((p) => p.id === productId);
+  return requireCatalog().products.find((p) => p.id === productId);
 }
 
 export function productsForStep(stepId: StepId): CatalogProduct[] {
-  return catalogData.products.filter((p) => p.stepId === stepId && !p.hideInBuilder);
+  return requireCatalog().products.filter((p) => p.stepId === stepId && !p.hideInBuilder);
 }
 
 export function getLineQuantity(quantities: QuantityMap, productId: string, variantId?: string | null): number {
@@ -78,19 +100,7 @@ export function getProductSelectedQuantity(quantities: QuantityMap, productId: s
   return total;
 }
 
-export interface ReviewLine {
-  key: string;
-  product: CatalogProduct;
-  variantId: string | null;
-  variantLabel: string | null;
-  image: string;
-  quantity: number;
-  unitPrice: number;
-  unitCompareAt: number | null;
-  lineTotal: number;
-  lineCompareAt: number | null;
-  displayName: string;
-}
+export type { ReviewLine } from "../types/review";
 
 const CATEGORY_ORDER: ReviewCategory[] = ["cameras", "sensors", "accessories", "plan"];
 
@@ -127,10 +137,11 @@ export function buildReviewLines(quantities: QuantityMap): ReviewLine[] {
   }
 
   return lines.sort((a, b) => {
+    const catalog = requireCatalog();
     const cat = CATEGORY_ORDER.indexOf(a.product.category) - CATEGORY_ORDER.indexOf(b.product.category);
     if (cat !== 0) return cat;
-    const orderA = catalogData.products.findIndex((p) => p.id === a.product.id);
-    const orderB = catalogData.products.findIndex((p) => p.id === b.product.id);
+    const orderA = catalog.products.findIndex((p) => p.id === a.product.id);
+    const orderB = catalog.products.findIndex((p) => p.id === b.product.id);
     return orderA - orderB;
   });
 }
@@ -143,7 +154,7 @@ export function groupReviewLines(
     accessories: "Accessories",
     plan: "Plan",
   },
-): { category: ReviewCategory; label: string; lines: ReviewLine[] }[] {
+): ReviewGroup[] {
   return CATEGORY_ORDER.map((category) => ({
     category,
     label: labels[category],
@@ -151,7 +162,7 @@ export function groupReviewLines(
   })).filter((g) => g.lines.length > 0);
 }
 
-export function computeTotals(lines: ReviewLine[]) {
+export function computeTotals(lines: ReviewLine[]): BundleTotals {
   const total = lines.reduce((sum, l) => sum + l.lineTotal, 0);
   const compareAt = lines.reduce((sum, l) => {
     if (l.product.includeCompareInTotal === false) {

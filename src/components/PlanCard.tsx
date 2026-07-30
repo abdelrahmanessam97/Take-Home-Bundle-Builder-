@@ -1,14 +1,8 @@
-import { catalogData, formatMoney } from '../lib/catalog'
-import type { CatalogProduct } from '../types/catalog'
-
-interface PlanCardProps {
-  product: CatalogProduct
-  selected: boolean
-  onSelect: () => void
-}
+import { requireCatalog, formatMoney } from '../lib/catalog'
+import type { PlanCardProps } from '../types'
 
 export function PlanCard({ product, selected, onSelect }: PlanCardProps) {
-  const { meta } = catalogData
+  const { meta } = requireCatalog()
   const titleId = `${product.id}-plan-title`
 
   return (

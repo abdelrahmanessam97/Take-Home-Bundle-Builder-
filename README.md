@@ -1,15 +1,20 @@
 # Bundle Builder
 
-Responsive React/Vite prototype of a multi-step home security bundle builder based on the provided design. The experience centers on a 4-step builder, a live review panel, variant-aware product quantities, and save-for-later persistence.
+Responsive React + Vite + TypeScript prototype of a multi-step home security **bundle builder** with a live **review panel**. Built as a production-style frontend take-home: data-driven JSON catalog, synced quantities, variant-aware selection, persistence, and an optional backend API.
 
-## Deliverables checklist
+---
+
+## Deliverables
 
 | Requirement | Status |
 | --- | --- |
-| JSON product/catalog data | `src/data/catalog.json` |
-| Clean clone + run instructions | See [Run locally](#run-locally) below |
-| README covering decisions / unfinished work | This file |
-| Bonus: backend API for catalog | `GET /api/catalog` (Vite locally; Vercel rewrite → static `catalog.json`; optional `npm run server`) |
+| React source | This repo |
+| JSON catalog data | `src/data/catalog.json` |
+| Run instructions (clean clone) | Below |
+| README: decisions / unfinished | This file |
+| Bonus backend API | `GET/PUT/POST /api/*` (Vite middleware + `npm run server` + Vercel adapters) |
+
+---
 
 ## Run locally
 
@@ -20,152 +25,233 @@ npm install
 npm run dev
 ```
 
-Open the local Vite URL shown in the terminal (typically `http://localhost:5173`).
+Open the Vite URL in the terminal (usually `http://localhost:5173`).
 
-That single command starts the UI **and** the catalog API at `GET /api/catalog` via a Vite middleware plugin. The app loads catalog data from that endpoint on startup, and falls back to the bundled JSON if the request fails.
+`npm run dev` starts the UI **and** the API under `/api/*` (Vite middleware). The app boots from `GET /api/bootstrap`. If the API fails, you see an error screen with **Retry**.
 
-### Other scripts
+### Scripts
 
 | Script | Purpose |
 | --- | --- |
+| `npm run dev` | Dev server + API middleware |
 | `npm run build` | Typecheck + production build |
-| `npm run preview` | Preview the production build (also serves `/api/catalog`) |
-| `npm run server` | Optional standalone Node API on port `3001` (`PORT` env overrides) |
-| `npm run lint` | Lint with oxlint |
+| `npm run preview` | Preview production build (API middleware included) |
+| `npm run server` | Standalone API on port `3001` |
+| `npm run lint` | oxlint |
 
-Standalone API (bonus / separate process):
+---
 
-```bash
-npm run server
-# → http://localhost:3001/api/catalog
+## What the app looks like / does
+
+### Layout
+
+- **Desktop:** two columns — builder (left) + sticky review (right).
+- **Tablet / phone:** stacks vertically; product grids adapt (1 → 2 → 3 → 4 → 5 columns by breakpoint; horizontal product cards at large widths).
+
+### Builder (left) — 4-step accordion
+
+1. **Choose your cameras** (open by default on first load)
+2. **Choose your plan**
+3. **Choose your sensors**
+4. **Add extra protection**
+
+Each step shows:
+
+- `STEP X OF 4` eyebrow  
+- Icon + title  
+- **N selected** when that step has distinct products with qty &gt; 0  
+- Chevron up/down  
+- Expanded body with product or plan cards  
+- **Next: …** button to advance (when provided)
+
+Accordion behavior:
+
+- Only one step open at a time (click header to open/close)
+- Opening/closing uses a CSS height animation
+- On mobile, the clicked header is **pinned in the viewport** during the animation so the page doesn’t jump while neighboring panels collapse/expand
+- Scroll anchoring is disabled on the builder to avoid browser scroll fights
+
+### Product cards
+
+May include (from JSON — not every product has every field):
+
+- Discount **badge**
+- Product image (switches with selected color when variant images exist)
+- Title + short description
+- **Show more / Show less** when the description is long enough to truncate; short blurbs have no toggle
+- Color **variant chips** (swatch + label) when variants exist
+- **Quantity stepper** (add-only cart control at 0 on builder cards; − / qty / + when qty &gt; 0)
+- Compare-at + active **pricing** (or FREE)
+- **Selected** border when any variant of that product has qty &gt; 0
+
+### Plan cards
+
+- Icon, title, description, features, compare-at + monthly price  
+- Select / Selected CTA  
+- Mutual exclusion via `exclusiveGroup` (only one subscription plan at a time)
+
+### Review panel (right) — “Your security system”
+
+- Live list of selected lines, grouped: **Cameras / Sensors / Accessories / Plan**
+- Each line: thumbnail (variant image when applicable), name, stepper (when adjustable), pricing  
+- Shipping row when present in the bundle  
+- Guarantee badge + copy  
+- Financing pill  
+- Compare-at total + active **total**  
+- Savings callout when savings &gt; 0  
+- **Checkout** + **Save my system for later**  
+- Empty state when no hardware (cameras/sensors/accessories) is selected — totals `$0`, actions disabled  
+
+Builder and review steppers stay **in sync**; totals recalculate on every quantity change.
+
+---
+
+## Interactions that work
+
+| Interaction | Behavior |
+| --- | --- |
+| Variant chips | Each color has its **own** quantity (`productId::variantId`). Card stepper edits the **active** color only. Other colors stay in the review if qty &gt; 0. |
+| Quantity steppers | On cards and review lines; shared state. |
+| Accordion | Expand/collapse; Step 1 open on first visit (unless restored from save). |
+| “N selected” | Counts distinct products in that step with any qty &gt; 0. |
+| Live review | Lines, groups, totals, savings update immediately. |
+| Show more / Show less | Only when description is truncated; labels from catalog meta. |
+| Plan select | Toggles plan; clears other plans in the same `exclusiveGroup`. |
+| Checkout | Validates, then `POST /api/checkout` (placeholder confirmation toast). Loading spinner on the button. |
+| Save for later | Writes **localStorage**, then best-effort `PUT /api/bundle`. Spinner while saving. |
+
+---
+
+## Data model
+
+Everything UI-facing is driven by `src/data/catalog.json`:
+
+- `meta` — copy, labels, validation messages  
+- `steps` — accordion steps  
+- `products` — cards/plans (price, variants, badges, flags, etc.)  
+- `initialQuantities` / `initialActiveVariants` — seed so first load matches the design (pre-filled review items)
+
+Line keys:
+
+```txt
+productId            → no variants
+productId::variantId → per-color quantity
 ```
 
-## What this project does
+### Seeded first load (example)
 
-- Recreates the bundle-builder flow from the screenshot/Figma as a two-column experience.
-- Lets shoppers configure cameras, a plan, sensors, and extra protection in a 4-step accordion.
-- Keeps the builder and review panel in sync as quantities change.
-- Supports per-variant quantities for products with color options.
-- Recalculates totals and savings live.
-- Saves the current configuration to `localStorage` through "Save my system for later".
-- Loads catalog content from `/api/catalog` (same JSON source of truth).
+Includes items such as Cam v4, Cam Pan, sensors, hub, MicroSD, Cam Unlimited, and Fast Shipping — so the review panel is populated like the Figma without hardcoding markup.
 
-## UI overview
+---
 
-The running app follows the reference design as a side-by-side shopping flow:
+## Persistence
 
-- Left side: a 4-step builder accordion for cameras, plan, sensors, and extra protection.
-- Right side: a live "Your security system" summary panel that updates instantly as the bundle changes.
-- Product cards show the same main information expected in the design: badge, image, title, short description, variant options, quantity stepper, and pricing.
-- The review panel groups selected items by category and shows quantities, pricing, savings, shipping, guarantee messaging, checkout, and save-for-later actions.
+1. **Required (assignment):** `localStorage` key `bundle-builder:saved-system`  
+   Stores: quantities, active variants, open accordion step.  
+2. On reload / return: **localStorage wins** over API/seed defaults.  
+3. **Bonus:** after a successful local save, the app also syncs to `PUT /api/bundle` (ignored if the server fails).
 
-On smaller screens, the layout stacks vertically so the builder stays usable on tablets and phones.
+---
 
-## Handled cases / states
+## Validation & loading UX
 
-This prototype explicitly handles a number of UI and state edge cases:
+- **Boot:** full-page spinner while `GET /api/bootstrap` loads; error + Retry if it fails.  
+- **Checkout blocked when:**
+  - No hardware products selected, or  
+  - Sensors are selected without **Wyze Sense Hub** (`requiredWhenStepSelected: "sensors"`)  
+- Validation messages show in the review summary; failed checkout/save show error toasts; success shows success toasts.  
+- Checkout/Save buttons show inline spinners and disable while a request is in flight.
 
-- Empty state when no hardware products are selected.
-- Review panel with no products selected:
-  - shows an empty-state message,
-  - keeps total at `$0.00`,
-  - hides plan/shipping-only summary content until at least one hardware item exists,
-  - disables checkout and save-for-later actions.
-- Variant-aware product selection:
-  - each color keeps its own quantity,
-  - switching color updates the main product image,
-  - the review panel uses the selected variant image.
-- Synchronized quantity updates from both places:
-  - product cards,
-  - review panel line items.
-- Mutually exclusive plan selection using the subscription `exclusiveGroup`.
-- Save-for-later persistence to `localStorage`, including:
-  - quantities,
-  - active color per product,
-  - currently open accordion step.
-- Catalog load from API with silent fallback to bundled JSON.
-- Responsive builder grid across breakpoints:
-  - under `500px`: 1 column,
-  - `500px+`: 2 columns,
-  - `768px+`: 3 columns,
-  - `900px–1195px`: 4 columns,
-  - `1196px–1279px`: 5 columns,
-  - `1280px+`: 2-column horizontal card layout.
-- Responsive review panel layout:
-  - stacked on small screens,
-  - two equal sections on md/lg,
-  - XL summary arranged to match the provided reference.
-- Long product descriptions:
-  - truncated safely in cards,
-  - inline `Read more` / `Show less` handling.
-- Accordion open/close behavior with reduced scroll jumping when expanding a section.
+---
+
+## Responsive breakpoints (product grid)
+
+| Viewport | Product columns / layout |
+| --- | --- |
+| &lt; 500px | 1 column |
+| 500px+ | 2 columns |
+| 768px+ | 3 columns |
+| 900–1195px | 4 columns |
+| 1196–1279px | 5 columns |
+| ≥ 1280px | Side-by-side page; product cards go horizontal (2-col grid in builder) |
+
+Review: stacks on small screens; two equal columns mid breakpoints; XL summary arranged for the Figma-style seal + totals layout.
+
+---
+
+## API (bonus)
+
+Shared router: `server/api.mjs` (used by Vite, `npm run server`, and Vercel `api/*`).
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/bootstrap` | Catalog + seed/server bundle (**single boot request**) |
+| `GET` | `/api/catalog` | Full catalog |
+| `GET` | `/api/products` | All products |
+| `GET` | `/api/products/:id` | One product |
+| `GET` | `/api/steps` | Steps |
+| `GET` | `/api/meta` | UI copy |
+| `GET` | `/api/initial-state` | Seed quantities/variants |
+| `GET` | `/api/bundle` | Server-saved or seed bundle |
+| `PUT` | `/api/bundle` | Persist bundle on server |
+| `POST` | `/api/checkout` | Placeholder order summary |
+
+Boot uses one deduped `/api/bootstrap` call (avoids double-fetch under React Strict Mode).
+
+---
 
 ## Project structure
 
-- `src/App.tsx` — App shell, catalog bootstrap, top-level layout.
-- `src/hooks/useBundleState.ts` — Quantities, variants, accordion step, save/restore, notices.
-- `src/lib/catalog.ts` — Catalog load helpers, pricing, review rows, totals.
-- `src/types/catalog.ts` — Domain types.
-- `src/data/catalog.json` — Source of truth for copy, products, pricing, variants, seeded state.
-- `src/components/` — Builder accordion, product/plan cards, review panel, quantity stepper.
-- `src/styles/` — Design tokens and review/plan styles.
-- `server/index.mjs` — Optional standalone Node HTTP server for `GET /api/catalog`.
-- `vite.config.ts` — React plugin + `/api/catalog` middleware for `dev` / `preview`.
+```txt
+src/
+  App.tsx                 # Boot spinner/error, then shell
+  components/
+    BuilderAccordion.tsx  # 4-step accordion + scroll pin
+    ProductCard.tsx       # Variants, show more/less, stepper
+    PlanCard.tsx
+    ReviewPanel.tsx       # Live summary, validation, actions
+    QuantityStepper.tsx
+    Spinner.tsx
+    StepIcon.tsx
+  hooks/useBundleState.ts # Shared bundle state + save/checkout
+  lib/
+    api.ts                # Fetch helpers
+    catalog.ts            # Pricing/review helpers + boot load
+    persistence.ts        # localStorage
+    validation.ts         # Checkout rules
+    lineKey.ts
+  data/catalog.json       # Source of truth
+  types/                  # All shared TS types
+  styles/                 # Tokens, review, plan CSS
+server/                   # Standalone Node API + shared router
+api/                      # Vercel serverless adapters
+```
 
-## Business logic
+---
 
-### Shared state
+## Decisions & tradeoffs
 
-The builder and review panel both read from the same state object created in `useBundleState()`. Quantity changes reflect immediately on both sides without duplicated state.
+- **JSON-driven UI** — change products/copy/seed in `catalog.json` without rewriting components.  
+- **localStorage first** for Save (assignment); API sync is bonus/best-effort.  
+- **Catalog from API** on boot (`/api/bootstrap`) so the bonus backend is real; no silent bundled fallback for catalog.  
+- **Derived review/totals** — not a second store; always matches quantities.  
+- **Checkout** is a prototype confirmation, not payments.  
+- Accordion scroll: continuous header pin during the CSS animation (especially important on phones).  
+- Show more only when text is actually truncated (avoids a no-op toggle).
 
-### Variant quantity model
-
-Products with variants use line keys shaped like `productId::variantId` (e.g. `cam-v4::white`). Each color keeps its own quantity; the selected chip only controls which variant the card stepper edits.
-
-### Review panel derivation
-
-The review panel is derived from the quantity map: build lines → group by category → compute compare-at, total, and savings.
-
-### Plan selection
-
-Plans use an `exclusiveGroup` in the catalog so only one subscription can be active at once.
-
-### Persistence
-
-"Save my system for later" stores quantities, active variants, and the open accordion step in `localStorage`.
-
-### Catalog API (bonus)
-
-- Source of truth remains `src/data/catalog.json`.
-- During `npm run dev` / `npm run preview`, Vite serves that file at `GET /api/catalog`.
-- `npm run server` exposes the same endpoint on a standalone Node process (useful for demoing a separate backend).
-- On **Vercel**, `vercel.json` rewrites `GET /api/catalog` → `/catalog.json` (copied into `public/` at build time), so the same client URL works in production with no Node server.
-- The client calls `/api/catalog` on boot and falls back to the bundled JSON if the request fails.
-
-## Why the code is structured this way
-
-- JSON-driven catalog so content, pricing, badges, and seeded UI state change without rewriting markup.
-- One shared hook because builder and review are two views of the same bundle.
-- Pure helpers for pricing/review so logic stays predictable and easy to extend.
-- Components stay mostly presentational: they receive data and actions rather than owning bundle rules.
-
-## Decisions and tradeoffs
-
-- Catalog lives in one JSON file; the bonus API serves that same file rather than introducing a database.
-- Checkout is a placeholder confirmation — payment is outside take-home scope.
-- Product imagery is served locally so a clean clone runs without external asset hosts.
-- Clarity and correctness over premature optimization — the catalog is small and this is a prototype.
-- Accordion animation uses CSS grid (`0fr` → `1fr`) instead of JS height measurement for simpler open/close motion.
+---
 
 ## Unfinished / out of scope
 
-- Real checkout / cart / payment integration.
-- Authenticated accounts or server-side persistence of saved systems.
-- Production CDN / image pipeline (local assets only).
-- Full pixel-perfect parity audit against every Figma breakpoint (layout targets the reference; residual visual diffs may remain).
-- Automated unit/e2e test suite.
+- Real payment / cart provider  
+- Authenticated multi-user DB persistence  
+- Full pixel-perfect audit against every Figma breakpoint  
+- Automated unit/e2e test suite  
 
-## Notes / limitations
+---
 
-- Seeded starting configuration is defined in `src/data/catalog.json` and can be adjusted if the reference changes.
-- Some product assets are local placeholders/exports rather than a production asset pipeline.
+## Notes
+
+- Adjust seed look in `src/data/catalog.json` → `initialQuantities` / `initialActiveVariants`.  
+- After pulling API/middleware changes, restart `npm run dev`.  
+- On Vercel, serverless file saves under `/tmp` are ephemeral; **localStorage** is what users rely on across visits in the browser.

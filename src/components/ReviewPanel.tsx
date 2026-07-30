@@ -1,11 +1,12 @@
-import { formatMoney, type ReviewLine } from '../lib/catalog'
-import type { BundleState } from '../hooks/useBundleState'
-import type { CatalogMeta } from '../types/catalog'
+import { formatMoney } from '../lib/catalog'
+import type {
+  ReviewGroupSectionProps,
+  ReviewLine,
+  ReviewLineRowProps,
+  ReviewPanelProps,
+} from '../types'
 import { QuantityStepper } from './QuantityStepper'
-
-interface ReviewPanelProps {
-  bundle: BundleState
-}
+import { Spinner } from './Spinner'
 
 function isHardwareLine(line: ReviewLine) {
   return (
@@ -29,14 +30,18 @@ export function ReviewPanel({ bundle }: ReviewPanelProps) {
     reviewGroups,
     reviewLines,
     totals,
+    validationErrors,
     adjustQuantity,
     saveForLater,
     checkout,
     saveNotice,
     checkoutNotice,
+    saving,
+    checkingOut,
   } = bundle
 
   const { meta } = catalog
+  const busy = saving || checkingOut
 
   /** Plan/shipping alone do not count — review stays empty without hardware */
   const hasProducts = reviewLines.some(isHardwareLine)
@@ -53,11 +58,14 @@ export function ReviewPanel({ bundle }: ReviewPanelProps) {
   const displaySavings = hasProducts ? totals.savings : 0
 
   const onLineAdjust = (line: ReviewLine, delta: number) => {
+    if (busy) return
     adjustQuantity(line.product.id, line.variantId, delta)
   }
 
   return (
-    <aside className={`review${hasProducts ? '' : ' review--empty'}`}>
+    <aside
+      className={`review${hasProducts ? '' : ' review--empty'}${busy ? ' review--busy' : ''}`}
+    >
       <div className="review__layout review__layout--half">
         <section
           className="review__section review__section--items review__col"
@@ -162,34 +170,64 @@ export function ReviewPanel({ bundle }: ReviewPanelProps) {
             </p>
           ) : null}
 
+          {validationErrors.length > 0 && hasProducts ? (
+            <ul className="review__validation" role="alert">
+              {validationErrors.map((error) => (
+                <li key={error}>{error}</li>
+              ))}
+            </ul>
+          ) : null}
+
           <div className="review__actions">
             <button
               type="button"
               className="btn btn--primary"
-              onClick={checkout}
-              disabled={!hasProducts}
+              onClick={() => void checkout()}
+              disabled={!hasProducts || busy}
+              aria-busy={checkingOut}
             >
-              {meta.checkoutLabel}
+              {checkingOut ? (
+                <>
+                  <Spinner size="sm" label={meta.checkingOutLabel} />
+                  <span>{meta.checkingOutLabel}</span>
+                </>
+              ) : (
+                meta.checkoutLabel
+              )}
             </button>
             <button
               type="button"
               className="review__save"
-              onClick={saveForLater}
-              disabled={!hasProducts}
+              onClick={() => void saveForLater()}
+              disabled={!hasProducts || busy}
+              aria-busy={saving}
             >
-              {meta.saveForLaterLabel}
+              {saving ? (
+                <span className="review__save-loading">
+                  <Spinner size="sm" label={meta.savingLabel} />
+                  <span>{meta.savingLabel}</span>
+                </span>
+              ) : (
+                meta.saveForLaterLabel
+              )}
             </button>
           </div>
 
           <div className="review__notices" aria-live="polite" aria-atomic="true">
             {saveNotice ? (
-              <p className="review__toast review__toast--save" role="status">
-                {saveNotice}
+              <p
+                className={`review__toast review__toast--${saveNotice.tone}`}
+                role={saveNotice.tone === 'error' ? 'alert' : 'status'}
+              >
+                {saveNotice.message}
               </p>
             ) : null}
             {checkoutNotice ? (
-              <p className="review__toast review__toast--checkout" role="status">
-                {meta.checkoutNotice}
+              <p
+                className={`review__toast review__toast--${checkoutNotice.tone}`}
+                role={checkoutNotice.tone === 'error' ? 'alert' : 'status'}
+              >
+                {checkoutNotice.message}
               </p>
             ) : null}
           </div>
@@ -204,12 +242,7 @@ function ReviewGroupSection({
   lines,
   meta,
   onLineAdjust,
-}: {
-  label: string
-  lines: ReviewLine[]
-  meta: CatalogMeta
-  onLineAdjust: (line: ReviewLine, delta: number) => void
-}) {
+}: ReviewGroupSectionProps) {
   return (
     <section className="review-group">
       <h3 className="review-group__label">{label}</h3>
@@ -233,12 +266,7 @@ function ReviewLineRow({
   meta,
   onDecrease,
   onIncrease,
-}: {
-  line: ReviewLine
-  meta: CatalogMeta
-  onDecrease: () => void
-  onIncrease: () => void
-}) {
+}: ReviewLineRowProps) {
   const showCompare = line.lineCompareAt != null && line.lineCompareAt > line.lineTotal
   const isFree = line.product.isFree || line.lineTotal === 0
   const showStepper = line.product.adjustable !== false

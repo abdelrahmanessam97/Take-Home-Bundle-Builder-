@@ -96,13 +96,47 @@ ol {
   place-items: center;
 }
 
+.app-boot-error {
+  display: grid;
+  gap: 1rem;
+  justify-items: center;
+  max-width: 28rem;
+  padding: 1.5rem;
+  text-align: center;
+  color: var(--color-text-primary, #1a1a1a);
+}
+
+.app-boot-error p {
+  margin: 0;
+  line-height: 1.45;
+}
+
 .app-spinner {
+  display: inline-block;
   width: 2.5rem;
   height: 2.5rem;
   border: 3px solid color-mix(in srgb, var(--color-brand, #1b9e4b) 22%, transparent);
   border-top-color: var(--color-brand, #1b9e4b);
   border-radius: 50%;
   animation: app-spinner-rotate 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+.app-spinner--sm {
+  width: 1rem;
+  height: 1rem;
+  border-width: 2px;
+}
+
+.app-spinner--md {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+.app-spinner--lg {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-width: 3px;
 }
 
 @keyframes app-spinner-rotate {

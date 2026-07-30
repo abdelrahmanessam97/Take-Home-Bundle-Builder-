@@ -2,6 +2,10 @@ export type ReviewCategory = 'cameras' | 'sensors' | 'accessories' | 'plan'
 
 export type StepId = 'cameras' | 'plan' | 'sensors' | 'protection'
 
+export type StepIconName = 'camera' | 'shield' | 'sensor' | 'grid'
+
+export type ProductIcon = 'shield' | 'truck'
+
 export interface ProductVariant {
   id: string
   label: string
@@ -35,8 +39,13 @@ export interface CatalogProduct {
   variants?: ProductVariant[]
   /** If false, hide qty stepper in review (rare) */
   adjustable?: boolean
+  /**
+   * When any other product in this builder step is selected,
+   * this product must also have quantity > 0 before checkout.
+   */
+  requiredWhenStepSelected?: StepId
   /** Icon-only row (shipping / plan) may use icon instead of product photo */
-  icon?: 'shield' | 'truck'
+  icon?: ProductIcon
   /** When false, compare-at is shown on the line but omitted from the bundle compare total */
   includeCompareInTotal?: boolean
   /** Feature bullets for plan / business cards */
@@ -51,7 +60,7 @@ export interface CatalogStep {
   id: StepId
   title: string
   nextLabel?: string
-  icon: 'camera' | 'shield' | 'sensor' | 'grid'
+  icon: StepIconName
 }
 
 export interface CatalogMeta {
@@ -82,11 +91,16 @@ export interface CatalogMeta {
   ofLabel: string
   selectedCountSuffix: string
   readMoreLabel: string
+  showMoreLabel: string
   showLessLabel: string
   learnMoreLabel: string
   freeLabel: string
   selectPlanLabel: string
   selectedPlanLabel: string
+  validationEmptyBundle: string
+  validationRequiredProduct: string
+  savingLabel: string
+  checkingOutLabel: string
   reviewCategoryLabels: Record<ReviewCategory, string>
 }
 
@@ -106,11 +120,7 @@ export interface CatalogData {
 /** Runtime selection map: lineKey → quantity */
 export type QuantityMap = Record<string, number>
 
-export function lineKey(productId: string, variantId?: string | null): string {
-  return variantId ? `${productId}::${variantId}` : productId
-}
-
-export function parseLineKey(key: string): { productId: string; variantId: string | null } {
-  const [productId, variantId] = key.split('::')
-  return { productId, variantId: variantId ?? null }
+export interface LineKeyParts {
+  productId: string
+  variantId: string | null
 }

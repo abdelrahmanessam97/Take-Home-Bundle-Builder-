@@ -1,38 +1,40 @@
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 
-const rootDir = path.dirname(fileURLToPath(import.meta.url));
-const catalogPath = path.resolve(rootDir, "src/data/catalog.json");
-const publicCatalogPath = path.resolve(rootDir, "public/catalog.json");
+type ApiHandler = (req: unknown, res: unknown) => Promise<boolean>;
 
-/** Keep public/catalog.json in sync so Vercel can rewrite /api/catalog → /catalog.json. */
-function syncPublicCatalog() {
-  fs.mkdirSync(path.dirname(publicCatalogPath), { recursive: true });
-  fs.copyFileSync(catalogPath, publicCatalogPath);
+async function loadApiHandler(): Promise<ApiHandler> {
+  // @ts-expect-error plain ESM server module without generated types
+  const mod = await import("./server/api.mjs");
+  return mod.handleNodeRequest as ApiHandler;
 }
 
-/** Serves GET /api/catalog from the same JSON file used by the app. */
+/** Serves all /api/* routes from the shared Node API during vite/preview. */
 function catalogApiPlugin(): Plugin {
+  let handleNodeRequest: ApiHandler | null = null;
+
   return {
-    name: "catalog-api",
-    buildStart() {
-      syncPublicCatalog();
-    },
-    configureServer(server) {
-      syncPublicCatalog();
-      server.middlewares.use("/api/catalog", (_req, res) => {
-        res.setHeader("Content-Type", "application/json");
-        fs.createReadStream(catalogPath).pipe(res);
+    name: "bundle-builder-api",
+    async configureServer(server) {
+      handleNodeRequest = await loadApiHandler();
+      server.middlewares.use(async (req, res, next) => {
+        try {
+          const handled = await handleNodeRequest!(req, res);
+          if (!handled) next();
+        } catch (error) {
+          next(error);
+        }
       });
     },
-    configurePreviewServer(server) {
-      syncPublicCatalog();
-      server.middlewares.use("/api/catalog", (_req, res) => {
-        res.setHeader("Content-Type", "application/json");
-        fs.createReadStream(catalogPath).pipe(res);
+    async configurePreviewServer(server) {
+      handleNodeRequest = await loadApiHandler();
+      server.middlewares.use(async (req, res, next) => {
+        try {
+          const handled = await handleNodeRequest!(req, res);
+          if (!handled) next();
+        } catch (error) {
+          next(error);
+        }
       });
     },
   };

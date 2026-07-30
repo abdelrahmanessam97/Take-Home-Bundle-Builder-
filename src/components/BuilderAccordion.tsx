@@ -1,35 +1,61 @@
-import type { BundleState } from '../hooks/useBundleState'
+import { useRef } from 'react'
 import { getProduct, productsForStep } from '../lib/catalog'
-import type { StepId } from '../types/catalog'
+import type { BuilderAccordionProps, StepId, StepProductCardProps } from '../types'
 import { PlanCard } from './PlanCard'
 import { ProductCard } from './ProductCard'
 import { Chevron, StepIcon } from './StepIcon'
 
-interface BuilderAccordionProps {
-  bundle: BundleState
+/** Matches `.builder-step__panel` grid-template-rows transition (420ms) + buffer. */
+const PANEL_ANIMATION_MS = 460
+
+/**
+ * Keep the clicked accordion header fixed in the viewport while panels
+ * expand/collapse. A single post-frame correction is not enough on mobile
+ * because the CSS height animation keeps shifting layout for ~420ms.
+ */
+function pinHeaderDuringAnimation(button: HTMLButtonElement | null) {
+  if (!button) return
+
+  const anchorTop = button.getBoundingClientRect().top
+  const startedAt = performance.now()
+
+  const sync = (now: number) => {
+    const delta = button.getBoundingClientRect().top - anchorTop
+    if (Math.abs(delta) > 0.5) {
+      window.scrollBy(0, delta)
+    }
+    if (now - startedAt < PANEL_ANIMATION_MS) {
+      window.requestAnimationFrame(sync)
+    }
+  }
+
+  window.requestAnimationFrame(sync)
 }
 
 export function BuilderAccordion({ bundle }: BuilderAccordionProps) {
-  const { catalog, openStepId, toggleStep, goToNextStep, stepSelectedCount } =
-    bundle
+  const { catalog, openStepId, toggleStep, goToNextStep, stepSelectedCount } = bundle
   const { meta } = catalog
+  const headerRefs = useRef<Partial<Record<StepId, HTMLButtonElement | null>>>({})
 
-  const handleToggle = (
-    stepId: StepId,
-    button: HTMLButtonElement | null,
-  ) => {
-    const beforeTop = button?.getBoundingClientRect().top ?? 0
+  const handleToggle = (stepId: StepId) => {
+    const button = headerRefs.current[stepId] ?? null
     toggleStep(stepId)
+    pinHeaderDuringAnimation(button)
+  }
 
-    // Keep the clicked header visually stable when neighboring panels collapse.
+  const handleNext = (current: StepId) => {
+    const idx = catalog.steps.findIndex((s) => s.id === current)
+    const next = catalog.steps[idx + 1]
+    goToNextStep(current)
+
+    if (!next) return
+
     window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => {
-        const afterTop = button?.getBoundingClientRect().top ?? 0
-        const delta = afterTop - beforeTop
-        if (Math.abs(delta) > 1) {
-          window.scrollBy({ top: delta, behavior: 'auto' })
-        }
-      })
+      const nextButton = headerRefs.current[next.id] ?? null
+      if (!nextButton) return
+      // Bring the newly opened step into view on short phone screens, then pin it.
+      nextButton.scrollIntoView({ block: 'nearest', behavior: 'auto' })
+      pinHeaderDuringAnimation(nextButton)
     })
   }
 
@@ -56,8 +82,11 @@ export function BuilderAccordion({ bundle }: BuilderAccordionProps) {
               <button
                 type="button"
                 id={headerId}
+                ref={(node) => {
+                  headerRefs.current[step.id] = node
+                }}
                 className="builder-step__header"
-                onClick={(event) => handleToggle(step.id, event.currentTarget)}
+                onClick={() => handleToggle(step.id)}
                 aria-expanded={isOpen}
                 aria-controls={panelId}
               >
@@ -103,9 +132,7 @@ export function BuilderAccordion({ bundle }: BuilderAccordionProps) {
                           >
                             <PlanCard
                               product={product}
-                              selected={
-                                bundle.getCardQuantity(product.id, false) > 0
-                              }
+                              selected={bundle.getCardQuantity(product.id, false) > 0}
                               onSelect={() => bundle.selectPlan(product.id)}
                             />
                           </div>
@@ -124,10 +151,7 @@ export function BuilderAccordion({ bundle }: BuilderAccordionProps) {
                           className="builder-grid__cell"
                           role="listitem"
                         >
-                          <StepProductCard
-                            productId={product.id}
-                            bundle={bundle}
-                          />
+                          <StepProductCard productId={product.id} bundle={bundle} />
                         </div>
                       ))}
                     </div>
@@ -138,7 +162,7 @@ export function BuilderAccordion({ bundle }: BuilderAccordionProps) {
                       <button
                         type="button"
                         className="btn btn--outline"
-                        onClick={() => goToNextStep(step.id)}
+                        onClick={() => handleNext(step.id)}
                         tabIndex={isOpen ? 0 : -1}
                       >
                         {step.nextLabel}
@@ -155,14 +179,9 @@ export function BuilderAccordion({ bundle }: BuilderAccordionProps) {
   )
 }
 
-function StepProductCard({
-  productId,
-  bundle,
-}: {
-  productId: string
-  bundle: BundleState
-}) {
-  const product = getProduct(productId) ?? bundle.catalog.products.find((p) => p.id === productId)
+function StepProductCard({ productId, bundle }: StepProductCardProps) {
+  const product =
+    getProduct(productId) ?? bundle.catalog.products.find((p) => p.id === productId)
   if (!product) return null
 
   const hasVariants = Boolean(product.variants?.length)
@@ -178,9 +197,7 @@ function StepProductCard({
       activeVariantId={activeVariantId}
       selected={selected}
       quantity={quantity}
-      onSelectVariant={(variantId) =>
-        bundle.setActiveVariant(product.id, variantId)
-      }
+      onSelectVariant={(variantId) => bundle.setActiveVariant(product.id, variantId)}
       onDecrease={() => bundle.adjustQuantity(product.id, activeVariantId, -1)}
       onIncrease={() => bundle.adjustQuantity(product.id, activeVariantId, 1)}
     />

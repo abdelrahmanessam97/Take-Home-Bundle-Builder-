@@ -1,38 +1,27 @@
 import http from "node:http";
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { handleNodeRequest } from "./api.mjs";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const catalogPath = path.resolve(__dirname, "../src/data/catalog.json");
 const port = Number(process.env.PORT) || 3001;
 
-const server = http.createServer((req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-
-  if (req.method === "OPTIONS") {
-    res.writeHead(204);
-    res.end();
-    return;
+const server = http.createServer(async (req, res) => {
+  const handled = await handleNodeRequest(req, res);
+  if (!handled) {
+    res.statusCode = 404;
+    res.setHeader("Content-Type", "application/json");
+    res.end(JSON.stringify({ error: "Not found" }));
   }
-
-  if (req.method === "GET" && (req.url === "/api/catalog" || req.url === "/api/catalog/")) {
-    fs.readFile(catalogPath, "utf8", (err, data) => {
-      if (err) {
-        res.writeHead(500, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ error: "Failed to read catalog" }));
-        return;
-      }
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(data);
-    });
-    return;
-  }
-
-  res.writeHead(404, { "Content-Type": "application/json" });
-  res.end(JSON.stringify({ error: "Not found" }));
 });
 
 server.listen(port, () => {
-  console.log(`Catalog API listening on http://localhost:${port}/api/catalog`);
+  console.log(`Bundle Builder API on http://localhost:${port}`);
+  console.log("  GET  /api/bootstrap");
+  console.log("  GET  /api/catalog");
+  console.log("  GET  /api/products");
+  console.log("  GET  /api/products/:id");
+  console.log("  GET  /api/steps");
+  console.log("  GET  /api/meta");
+  console.log("  GET  /api/initial-state");
+  console.log("  GET  /api/bundle");
+  console.log("  PUT  /api/bundle");
+  console.log("  POST /api/checkout");
 });

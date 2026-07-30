@@ -1,16 +1,13 @@
-const STEP_ICON_SRC = {
+import type { ChevronProps, StepIconName, StepIconProps } from '../types'
+
+const STEP_ICON_SRC: Record<StepIconName, string> = {
   camera: '/images/icons/cameras.png',
   shield: '/images/icons/plan.png',
   sensor: '/images/icons/sensors.png',
   grid: '/images/icons/protection.png',
-} as const
-
-export type StepIconName = keyof typeof STEP_ICON_SRC
-
-interface StepIconProps {
-  name: StepIconName
-  className?: string
 }
+
+export type { StepIconName }
 
 export function StepIcon({ name, className }: StepIconProps) {
   const src = STEP_ICON_SRC[name]
@@ -30,7 +27,7 @@ export function StepIcon({ name, className }: StepIconProps) {
 }
 
 /** Filled caret — matches Figma accordion arrow */
-export function Chevron({ up }: { up?: boolean }) {
+export function Chevron({ up }: ChevronProps) {
   return (
     <svg
       width="12"
