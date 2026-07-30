@@ -1,5 +1,6 @@
 import type { BundleState } from '../hooks/useBundleState'
 import { productsForStep } from '../lib/catalog'
+import type { StepId } from '../types/catalog'
 import { PlanCard } from './PlanCard'
 import { ProductCard } from './ProductCard'
 import { Chevron, StepIcon } from './StepIcon'
@@ -12,6 +13,24 @@ export function BuilderAccordion({ bundle }: BuilderAccordionProps) {
   const { catalog, openStepId, toggleStep, goToNextStep, stepSelectedCount } =
     bundle
   const { meta } = catalog
+
+  const handleToggle = (
+    stepId: StepId,
+    button: HTMLButtonElement | null,
+  ) => {
+    const beforeTop = button?.getBoundingClientRect().top ?? 0
+    toggleStep(stepId)
+
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        const afterTop = button?.getBoundingClientRect().top ?? 0
+        const delta = afterTop - beforeTop
+        if (Math.abs(delta) > 1) {
+          window.scrollBy({ top: delta, behavior: 'auto' })
+        }
+      })
+    })
+  }
 
   return (
     <div className="builder">
@@ -34,7 +53,9 @@ export function BuilderAccordion({ bundle }: BuilderAccordionProps) {
             <button
               type="button"
               className="builder-step__header"
-              onClick={() => toggleStep(step.id)}
+              onClick={(event) =>
+                handleToggle(step.id, event.currentTarget)
+              }
               aria-expanded={isOpen}
               aria-controls={panelId}
             >

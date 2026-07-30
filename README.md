@@ -36,6 +36,44 @@ The running app follows the reference design as a side-by-side shopping flow:
 
 On smaller screens, the layout stacks vertically so the builder stays usable on tablets and phones.
 
+## Handled cases / states
+
+This prototype explicitly handles a number of UI and state edge cases:
+
+- Empty state when no hardware products are selected.
+- Review panel with no products selected:
+  - shows an empty-state message,
+  - keeps total at `$0.00`,
+  - hides plan/shipping-only summary content until at least one hardware item exists,
+  - disables checkout and save-for-later actions.
+- Variant-aware product selection:
+  - each color keeps its own quantity,
+  - switching color updates the main product image,
+  - the review panel uses the selected variant image.
+- Synchronized quantity updates from both places:
+  - product cards,
+  - review panel line items.
+- Mutually exclusive plan selection using the subscription `exclusiveGroup`.
+- Save-for-later persistence to `localStorage`, including:
+  - quantities,
+  - active color per product,
+  - currently open accordion step.
+- Responsive builder grid across breakpoints:
+  - under `500px`: 1 column,
+  - `500px+`: 2 columns,
+  - `768px+`: 3 columns,
+  - `900px–1195px`: 4 columns,
+  - `1196px–1279px`: 5 columns,
+  - `1280px+`: 2-column horizontal card layout.
+- Responsive review panel layout:
+  - stacked on small screens,
+  - two equal sections on md/lg,
+  - XL summary arranged to match the provided reference.
+- Long product descriptions:
+  - truncated safely in cards,
+  - inline `Read more` / `Show less` handling.
+- Accordion open/close behavior with reduced scroll jumping when expanding a section.
+
 ## Project structure
 
 - `src/App.tsx`
